@@ -1,0 +1,48 @@
+@echo off
+echo === wibeSlam launcher ===
+
+docker --version >nul 2>&1
+if errorlevel 1 goto nodocker
+
+docker image inspect wibeslam:latest >nul 2>&1
+if errorlevel 1 goto noimage
+
+echo Select mode:
+echo   1. WiFi/UDP agent
+echo   2. USB/Serial agent
+echo   3. Full stack (agent + Cartographer)
+set /p choice=Enter 1, 2 or 3: 
+
+rem убить старый контейнер с тем же именем, если висит
+docker rm -f wibeslam_agent >nul 2>&1
+
+if "%choice%"=="1" goto mode1
+if "%choice%"=="2" goto mode2
+if "%choice%"=="3" goto mode3
+echo Bad choice.
+goto end
+
+:mode1
+docker run -it --rm --name wibeslam_agent -p 8888:8888/udp wibeslam:latest
+goto end
+
+:mode2
+docker run -it --rm --name wibeslam_agent --privileged --device=/dev/ttyACM0 -e MODE=serial wibeslam:latest
+goto end
+
+:mode3
+docker run -it --rm --name wibeslam_agent -p 8888:8888/udp -p 8765:8765 -e MODE=full wibeslam:latest
+goto end
+
+:nodocker
+echo ERROR: Docker not found or not running.
+pause
+exit /b 1
+
+:noimage
+echo ERROR: image wibeslam:latest not found. Run build.bat first.
+pause
+exit /b 1
+
+:end
+pause
