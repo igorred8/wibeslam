@@ -135,35 +135,31 @@ void scanTask(void*) {
 
 void publishScan() {
     if (!lidarConnected || !rosConnected) return;
-    if (!imuCalibrated) return;   // не публикуем до снятия bias
-
-    // Троттлинг: не чаще 8 Гц, чтобы не спамить Cartographer стоя
-    static uint32_t lastPub = 0;
-    uint32_t now = millis();
-    if (now - lastPub < SCAN_MIN_INTERVAL_MS) return;
-    lastPub = now;
-
-    // Заполнение массивов дальностей и интенсивностей
+    if (!imuCalibrated) return;   // не спамим до снятия bias
+    {   // троттлинг: не чаще 8 Гц
+        static uint32_t lastPub = 0;
+        uint32_t now = millis();
+        if (now - lastPub < SCAN_MIN_INTERVAL_MS) return;
+        lastPub = now;
+    }
     for (int i = 0; i < MAX_SCAN_POINTS; i++) {
         float m = scanPoints[i].distance_mm / 1000.0f;
         bool ok = scanPoints[i].valid && m > 0.02f && m < 12.0f;
         scan_msg.ranges.data[i]      = ok ? m : INFINITY;
         scan_msg.intensities.data[i] = ok ? scanPoints[i].quality : 0.0f;
     }
-
-    // Честная длительность оборота и шаг времени на луч
-    // (нужны Cartographer'у для суб-сканов и deskew)
+    // Честная длительность оборота и шаг времени на луч (deskew в Cartographer)
     float sf = scanFrequency;
     if (sf < 1.0f) sf = 10.0f;
     scan_msg.scan_time      = 1.0f / sf;
     scan_msg.time_increment = scan_msg.scan_time / MAX_SCAN_POINTS;
-
     getRosTime(scan_msg.header.stamp);
     (void)rcl_publish(&lidar_pub, &scan_msg, NULL);
 }
 
 void publishIMU() {
     if (!imuConnected || !rosConnected) return;
+    if (!imuCalibrated) return;
     imu_msg.linear_acceleration.x = accX;
     imu_msg.linear_acceleration.y = accY;
     imu_msg.linear_acceleration.z = accZ;
