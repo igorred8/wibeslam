@@ -10,6 +10,11 @@
 #define DEF_AGENT "192.168.1.100"
 #define AGENT_PORT 8888
 
+#define DEF_SSID  "chub"
+#define DEF_PASS  "StarT 20/12/01 my LoVe"
+#define DEF_AGENT "192.168.1.151"
+#define AGENT_PORT 8888
+
 #define LIDAR_RX_PIN 18
 #define LIDAR_TX_PIN 17
 #define IMU_SDA 48
