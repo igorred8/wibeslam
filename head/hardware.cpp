@@ -88,7 +88,7 @@ static float sma(const float* buf, int len) {
     return s / len;
 }
 
-// Сырое чтение + подмена осей, БЕЗ фильтрации (для imuTask, пункт 2)
+// Сырое чтение + подмена осей, БЕЗ фильтрации (для imuTask)
 bool readQMI8658Raw(float ra[3], float rg[3]) {
     if (!imuConnected) return false;
     if (!(qmiRead(g_imuAddr, 0x2E) & 0x03)) return false;
@@ -100,32 +100,18 @@ bool readQMI8658Raw(float ra[3], float rg[3]) {
     int16_t gx=(b[7]<<8)|b[6], gy=(b[9]<<8)|b[8], gz=(b[11]<<8)|b[10];
     float rawAX = ax/4096.0f*9.81f, rawAY = ay/4096.0f*9.81f, rawAZ = az/4096.0f*9.81f;
     float rawGX = gx/64.0f, rawGY = gy/64.0f, rawGZ = gz/64.0f;
-    ra[0] = rawAZ; ra[1] = rawAX; ra[2] = rawAY;
-    rg[0] = rawGZ; rg[1] = rawGX; rg[2] = rawGY;
+    ra[0] = rawAZ; ra[1] = rawAX; ra[2] = rawAY;   // вперёд / влево / вверх
+    rg[0] = rawGZ; rg[1] = rawGX; rg[2] = rawGY;   // крен / тангаж / рыскание
     return true;
 }
 
-// Исходная readQMI8658: сырьё + подмена осей + SMA (как в стабильной версии)
+// Враппер со скользящим средним (вызываться из loop() НЕ должен — пишет imuTask)
 void readQMI8658() {
-    if (!imuConnected) return;
-    if (!(qmiRead(g_imuAddr, 0x2E) & 0x03)) return;
-    Wire.beginTransmission(g_imuAddr); Wire.write(0x35); Wire.endTransmission(false);
-    Wire.requestFrom(g_imuAddr, (uint8_t)12);
-    uint8_t b[12];
-    for (int i = 0; i < 12; i++) b[i] = Wire.available() ? Wire.read() : 0;
-    int16_t ax=(b[1]<<8)|b[0], ay=(b[3]<<8)|b[2], az=(b[5]<<8)|b[4];
-    int16_t gx=(b[7]<<8)|b[6], gy=(b[9]<<8)|b[8], gz=(b[11]<<8)|b[10];
-    float rawAX = ax/4096.0f*9.81f, rawAY = ay/4096.0f*9.81f, rawAZ = az/4096.0f*9.81f;
-    float rawGX = gx/64.0f, rawGY = gy/64.0f, rawGZ = gz/64.0f;
-    float aX =  rawAZ;  // вперёд <- датчик Z
-    float aY =  rawAX;  // влево  <- датчик X
-    float aZ =  rawAY;  // вверх  <- датчик Y
-    float gX =  rawGZ;  // крен
-    float gY =  rawGX;  // тангаж
-    float gZ =  rawGY;  // рыскание
-    accHistX[histIdx] = aX;  gyrHistX[histIdx] = gX;
-    accHistY[histIdx] = aY;  gyrHistY[histIdx] = gY;
-    accHistZ[histIdx] = aZ;  gyrHistZ[histIdx] = gZ;
+    float ra[3], rg[3];
+    if (!readQMI8658Raw(ra, rg)) return;
+    accHistX[histIdx] = ra[0]; gyrHistX[histIdx] = rg[0];
+    accHistY[histIdx] = ra[1]; gyrHistY[histIdx] = rg[1];
+    accHistZ[histIdx] = ra[2]; gyrHistZ[histIdx] = rg[2];
     histIdx = (histIdx + 1) % IMU_FILTER_WINDOW;
     if (histLen < IMU_FILTER_WINDOW) histLen++;
     accX = sma(accHistX, histLen);
@@ -136,7 +122,7 @@ void readQMI8658() {
     gyroZ = sma(gyrHistZ, histLen);
 }
 
-// Калибровка bias: среднее за ms мс в покое (для imuTask, пункт 2)
+// Калибровка bias: среднее за ms миллисекунд в покое
 void calibrateIMU(uint32_t ms) {
     if (!imuConnected) return;
     float sx=0, sy=0, sz=0, gx=0, gy=0, gz=0;
