@@ -1,5 +1,4 @@
-﻿#pragma once
-
+#pragma once
 // ---- Отладка IMU через Serial ----
 // Печатает CSV: t_ms,ax,ay,az,gx,gy,gz на частоте чтения IMU (~100 Hz).
 // РАБОТАЕТ ТОЛЬКО В WiFi-РЕЖИМЕ! В USB-режиме Serial занят micro-ROS.
@@ -8,11 +7,6 @@
 #define DEF_SSID  "CHANGE_ME"
 #define DEF_PASS  "CHANGE_ME"
 #define DEF_AGENT "192.168.1.100"
-#define AGENT_PORT 8888
-
-#define DEF_SSID  "chub"
-#define DEF_PASS  "StarT 20/12/01 my LoVe"
-#define DEF_AGENT "192.168.1.151"
 #define AGENT_PORT 8888
 
 #define LIDAR_RX_PIN 18
@@ -53,14 +47,13 @@
 #define ZOOM_STEP 1.4f
 #define ZOOM_MIN  10.0f
 #define ZOOM_MAX 230.0f
-
 #define BTN_IMU_X 140
 #define BTN_IMU_Y  30
 #define BTN_IMU_W  40
 #define BTN_IMU_H  18
+
 // ---- Фильтр IMU от вибрации лидара ----
-// Окно скользящего среднего. Больше -> плавнее, но больше задержка.
-// Рекомендуется 8..16 для LD14P.
+// Окно скользящего среднего (используется враппером readQMI8658).
 #define IMU_FILTER_WINDOW 5
 
 #define BTN_TR_X 274
@@ -84,15 +77,10 @@
 #define GYRO_RANGE 1000
 #define ACC_RANGE   20
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-
 // ==== IMU: калибровка и фильтры (imu_filter.cpp) ====
-// 0=выкл 1=notch(частота оборотов) 2=Калман 3=синхронный 4=оверсемплинг
+// 0=выкл 1=notch(f и 2f оборота) 2=Калман 3=синхронный 4=оверсемплинг
 #define IMU_FILTER_MODE  1
-#define IMU_TASK_HZ      500    // темп опроса IMU в отдельной задаче
+#define IMU_TASK_HZ      500
 #define IMU_NOTCH_Q      2.0f
 #define IMU_KALMAN_Q     0.05f
 #define IMU_KALMAN_R     0.8f
@@ -104,8 +92,10 @@
 #define IMU_CALIBRATION_MS 2000   // сбор bias при первом подключении к ROS
 #define IMU_STILL_GYRO_MAX 5.0f   // порог "покоя" для автокоррекции, град/с
 #define IMU_STILL_ACC_TOL  0.5f   // допуск |a| от 9.81 для "покоя"
+#define IMU_ACC_EMA      0.5f     // EMA акселерометра (задержка ~2 мс)
+#define IMU_GYRO_DZ      0.25f    // мёртвая зона гироскопа, град/с
 #define SCAN_MIN_INTERVAL_MS 125  // троттлинг /scan: не чаще 8 Гц
-#define IMU_ACC_EMA      0.5f   // акселерометр: лёгкая EMA, задержка ~2 мс
-#define IMU_GYRO_DZ      0.25f  // мёртвая зона гироскопа, град/с: ноль дрейфа в покое
-// (IMU_FILTER_WINDOW больше не используется — SMA ушёл в задачу, можно удалить)
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
