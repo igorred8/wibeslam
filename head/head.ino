@@ -35,34 +35,34 @@ void loop() {
         bootStage = 3;
     }
     else if (bootStage == 3) {
-    xTaskCreatePinnedToCore(rosTask, "ros", 16384, NULL, 1, NULL, 0);
-    imuFilterInit();      // задача опроса IMU 500 Гц + фильтры + калибровка
-    bootStage = 4;
+        xTaskCreatePinnedToCore(rosTask, "ros", 16384, NULL, 1, NULL, 0);
+        imuFilterInit();      // задача опроса IMU 500 Гц + фильтры + калибровка
+        bootStage = 4;
     }
+
     wifiOK = (transportMode == 0) && (WiFi.status() == WL_CONNECTED);
     lidar.loop();
     if (newScanReady) { publishScan(); newScanReady = false; }
+
+    // IMU читает задача imuTask; здесь только отладочная печать глобалов
     if (millis() - lastIMURead >= 10) {
-    lastIMURead = millis();
+        lastIMURead = millis();
 #if IMU_DEBUG_SERIAL
-    if (transportMode == 0) { // в USB-режиме Serial трогать нельзя
-        Serial.printf("%lu,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f\n",
-                      (unsigned long)millis(),
-                      accX, accY, accZ, gyroX, gyroY, gyroZ);
-    }
+        if (transportMode == 0) {   // в USB-режиме Serial трогать нельзя
+            Serial.printf("%lu,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f\n",
+                          (unsigned long)millis(),
+                          accX, accY, accZ, gyroX, gyroY, gyroZ);
+        }
 #endif
-}
+    }
+
     if (millis() - lastIMUGraphSample >= 33) { sampleIMUGraph(); lastIMUGraphSample = millis(); }
     if (millis() - lastPublishIMU  >= 10)  { publishIMU(); lastPublishIMU = millis(); }
     pollTouch();
     updateDisplay();
-    // Обработка подписок микро-РОС (в той же задаче, что и публикации)
-rosSpin();
-
-// Проверка соединения по наличию синхронизации времени
-if (rosInitDone && millis() - lastPingMs >= 3000) {
-    lastPingMs   = millis();
-    rosConnected = isTimeSynced();
-    //Serial.printf("[CONN] synced=%d\n", rosConnected);
-}
+    rosSpin();
+    if (rosInitDone && millis() - lastPingMs >= 3000) {
+        lastPingMs   = millis();
+        rosConnected = isTimeSynced();
+    }
 }
