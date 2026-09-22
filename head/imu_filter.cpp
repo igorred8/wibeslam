@@ -2,9 +2,6 @@
 #include "hardware.h"
 #include <math.h>
 
-extern bool rosConnected;  // из ros.cpp
-extern int transportMode;  // из globals.cpp
-
 uint8_t imuFilterMode = IMU_FILTER_MODE;
 #define NAX 6   // 3 accel + 3 gyro
 
@@ -64,15 +61,11 @@ static void imuTask(void*) {
     for (;;) {
         vTaskDelayUntil(&last, pdMS_TO_TICKS(1000/IMU_TASK_HZ));
 
-        // Калибровка: один раз при первом подключении к ROS
+        // Калибровка: один раз при первом подключении к ROS (плата стоит)
         if (!calibrationTriggered && rosConnected) {
             calibrationTriggered = true;
             if (transportMode == 0) Serial.println("[IMU] ROS connected -> calibration...");
             calibrateIMU(IMU_CALIBRATION_MS);
-            if (transportMode == 0) {
-                Serial.printf("[IMU] Calibrated: acc %.2f/%.2f/%.2f gyro %.2f/%.2f/%.2f\n",
-                              accBiasX, accBiasY, accBiasZ, gyroBiasX, gyroBiasY, gyroBiasZ);
-            }
         }
 
         float ra[3], rg[3];
@@ -125,7 +118,7 @@ static void imuTask(void*) {
                                           (i<3)?IMU_KALMAN_R:IMU_KALMAN_RG);
             break;
         }
-        case 3: {   // SYNC: минус весь синхронный обороту шум (все гармоники)
+        case 3: {   // SYNC: минус весь синхронный обороту шум
             if (scanCounter != sLastScan) { sLastScan = scanCounter; sPhase = 0.0f; }
             else { sPhase += dt*scanFrequency; if (sPhase >= 1.0f) sPhase -= 1.0f; }
             int bin = (int)(sPhase * IMU_SYNC_BINS) % IMU_SYNC_BINS;
@@ -148,10 +141,10 @@ static void imuTask(void*) {
             }
             break;
         }
-        default:    // 0 = OFF: сырьё как есть
+        default:    // 0 = OFF
             for (int i=0;i<NAX;i++) out[i] = z[i];
             writeOut(out);
-            continue;   // без пост-обработки
+            continue;
         }
 
         // ---- Пост-обработка (режимы 1-4) ----
@@ -164,8 +157,7 @@ static void imuTask(void*) {
                 out[i] = accF[i];
             }
         }
-        // Гироскоп: мёртвая зона — добивает остаточный дрейф в покое,
-        // движения выше 0.25 град/с не трогает вообще
+        // Гироскоп: мёртвая зона — ноль дрейфа в покое, движения не трогает
         for (int i=3;i<6;i++)
             if (fabsf(out[i]) < IMU_GYRO_DZ) out[i] = 0.0f;
 
