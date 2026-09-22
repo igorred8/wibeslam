@@ -20,6 +20,7 @@ static void lidar_scan_point_callback(float angle_deg, float distance_mm, float 
         scanFrequency = lidar.getCurrentScanFreqHz();
         if (pointsThisScan >= 100) stablePts = pointsThisScan;
         pointsThisScan = 0;
+        scanCounter++;  // ← КРИТИЧНО: инкремент для синхронизации IMU фильтров
         newScanReady = true;
     }
 }

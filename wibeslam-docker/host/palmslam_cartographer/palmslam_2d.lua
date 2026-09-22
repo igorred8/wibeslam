@@ -9,7 +9,7 @@ options = {
   published_frame = "base_link",
   odom_frame = "odom",
   provide_odom_frame = true,
-  publish_frame_projected_to_2d = false,
+  publish_frame_projected_to_2d = true,   // ← ИСПРАВЛЕНО: для 2D SLAM должно быть true
   use_odometry = false,
   use_nav_sat = false,
   use_landmarks = false,
@@ -31,8 +31,8 @@ options = {
 MAP_BUILDER.use_trajectory_builder_2d = true
 MAP_BUILDER.num_background_threads = 4
 
--- ===== ЭКСПЕРИМЕНТ: только лидар, без IMU =====
--- false = лидар только. true = вернуть IMU (сравни карты!)
+-- Работа с IMU: включено (IMU + лидар)
+-- true = использовать IMU в паре с лидаром
 TRAJECTORY_BUILDER_2D.use_imu_data = true
 
 TRAJECTORY_BUILDER_2D.min_range = 0.05
