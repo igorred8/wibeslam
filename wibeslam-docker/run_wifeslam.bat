@@ -11,7 +11,9 @@ echo Select mode:
 echo   1. WiFi/UDP agent
 echo   2. USB/Serial agent
 echo   3. Full stack (agent + Cartographer)
-set /p choice=Enter 1, 2 or 3: 
+echo   4. APP stack (Cartographer + rosbridge :9090 for phone app)
+set AGENT_PORT=8888
+set /p choice=Enter 1, 2, 3 or 4: 
 
 rem убить старый контейнер с тем же именем, если висит
 docker rm -f wibeslam_agent >nul 2>&1
@@ -19,11 +21,12 @@ docker rm -f wibeslam_agent >nul 2>&1
 if "%choice%"=="1" goto mode1
 if "%choice%"=="2" goto mode2
 if "%choice%"=="3" goto mode3
+if "%choice%"=="4" goto mode4
 echo Bad choice.
 goto end
 
 :mode1
-docker run -it --rm --name wibeslam_agent -p 8888:8888/udp wibeslam:latest
+docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp wibeslam:latest
 goto end
 
 :mode2
@@ -31,7 +34,11 @@ docker run -it --rm --name wibeslam_agent --privileged --device=/dev/ttyACM0 -e 
 goto end
 
 :mode3
-docker run -it --rm --name wibeslam_agent -p 8888:8888/udp -p 8765:8765 -e MODE=full wibeslam:latest
+docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp -p 8765:8765 -e MODE=full wibeslam:latest
+goto end
+
+:mode4
+docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp -p 9090:9090 -p 8765:8765 -e MODE=app wibeslam:latest
 goto end
 
 :nodocker

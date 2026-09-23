@@ -22,8 +22,11 @@ elif [ "$MODE" = "serial" ]; then
 elif [ "$MODE" = "full" ]; then
     echo "=== Запуск полного стека (agent + Cartographer) ==="
     exec /root/run_slam.sh
+elif [ "$MODE" = "app" ]; then
+    echo "=== Запуск APP-стека (agent + Cartographer + rosbridge :9090 + foxglove) ==="
+    exec /root/app_launch.sh
 else
     echo "Неизвестный режим: $MODE"
-    echo "Доступные: udp, serial, full"
+    echo "Доступные: udp, serial, full, app"
     exit 1
 fi

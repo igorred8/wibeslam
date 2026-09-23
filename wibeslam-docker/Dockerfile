@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y \
     ros-humble-cartographer-ros \
     ros-humble-rviz2 \
     ros-humble-tf2-tools \
+    ros-humble-rosbridge-server \
+    ros-humble-foxglove-bridge \
+    ros-humble-laserscan-to-pointcloud2 \
+    python3-yaml \
+    python3-pil \
     && rm -rf /var/lib/apt/lists/*
 
 # Установка micro-ROS agent
@@ -28,9 +33,11 @@ RUN mkdir -p /uros_ws/src && \
 # Копирование конфигов Cartographer
 COPY host/palmslam_cartographer /root/palmslam_cartographer
 COPY host/run_slam.sh /root/run_slam.sh
+COPY host/app_launch.sh /root/app_launch.sh
+COPY host/save_map.sh /root/save_map.sh
 COPY host/host_time_publisher.py /root/host_time_publisher.py
 
-RUN chmod +x /root/run_slam.sh
+RUN chmod +x /root/run_slam.sh /root/app_launch.sh /root/save_map.sh
 
 WORKDIR /root
 
