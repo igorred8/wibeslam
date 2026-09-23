@@ -16,7 +16,7 @@ Docker-контейнер для запуска micro-ROS агента и Cartog
 
 **Режим 1: WiFi/UDP**
 - ESP32 подключена к WiFi
-- Агент слушает UDP порт 8888
+- Агент слушает UDP порт 8090 (как в стоке Yahboom; переопределяется AGENT_PORT)
 - На ESP32 в поле AGENT укажите IP компьютера (узнать: `ipconfig` в cmd)
 
 **Режим 2: USB/Serial**

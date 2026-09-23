@@ -6,14 +6,14 @@
 #
 # Переменные окружения:
 #   MODE      = udp (по умолчанию) | serial   — транспорт до платы
-#   AGENT_PORT= порт micro-ROS агента (8888; у Yahboom 8090 — см. README)
+#   AGENT_PORT= порт micro-ROS агента (по умолчанию 8090 — как в стоке Yahboom)
 #   CFG_LUA   = palmslam_2d_app (по умолчанию) | palmslam_2d_stock | palmslam_2d
 set -e
 source /opt/ros/humble/setup.bash
 source /uros_ws/install/setup.bash 2>/dev/null || true
 
 MODE=${MODE:-udp}
-AGENT_PORT=${AGENT_PORT:-8888}
+AGENT_PORT=${AGENT_PORT:-8090}
 CFG_LUA=${CFG_LUA:-palmslam_2d_app}
 PIDS=()
 

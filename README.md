@@ -14,7 +14,7 @@ IMU QMI8658, дисплей ST7789 320x240 с тачем), LiDAR LDROBOT LD14P +
   совпадают топики `/scan`, `/imu`, `/map`)
 
 **Хост (`wibeslam-docker/`, Windows 10 + WSL2 + Docker Desktop):**
-- micro-ROS agent (udp4, порт настраивается `AGENT_PORT`, по умолчанию 8888; у Yahboom 8090 — см. ниже)
+- micro-ROS agent (udp4, порт настраивается `AGENT_PORT`, по умолчанию 8090 — как в стоке Yahboom)
 - Cartographer 2D (наш тюнинг `use_imu_data=true` + deskew x2; либо сток-Yahboom конфиги)
 - `/map`, `/tf`; RViz2 через VcXsrv (X11) или Foxglove (:8765)
 - rosbridge_websocket (:9090) — точка входа для приложения «ROS Robot» (режим APP)
@@ -38,7 +38,7 @@ IMU QMI8658, дисплей ST7789 320x240 с тачем), LiDAR LDROBOT LD14P +
 
 | Компонент | Оригинал PalmSLAM | Наш хост |
 |---|---|---|
-| micro-ROS agent | `microros/micro-ros-agent:humble udp4 --port 8090 -v4` | тот же агент (собран из micro_ros_setup humble), порт `AGENT_PORT` (8888 по умолчанию, можно 8090) |
+| micro-ROS agent | `microros/micro-ros-agent:humble udp4 --port 8090 -v4` | ✅ идентичен: тот же агент (собран из micro_ros_setup humble), порт 8090 по умолчанию (`AGENT_PORT`) |
 | Топики платы | pub `/scan`, `/imu`; sub `/beep` (UInt16) | pub `/scan`, `/imu` ✅; `/beep` в прошивке нет |
 | SLAM | `cartographer_node` + `lds_2d.lua`: tracking/published=`base_footprint`, `use_imu_data=false`, min 0.1/max 30, missing 3, motion filter 0.3°, min_score 0.65 / global 0.7, `optimize_every_n_nodes=0` | `palmslam_2d_stock.lua` — дословный сток (A/B); `palmslam_2d_app.lua` — сток + оптимизация для APP; `palmslam_2d.lua` — наш тюнинг (IMU+deskew) |
 | TF | base_link→laser_frame xyz(-0.0046,0,0.094); base_footprint→base_link z=0.05 | base_link→laser roll=π (LD14P физически перевёрнут — параметр нашего корпуса, менять нельзя) |
@@ -48,9 +48,8 @@ IMU QMI8658, дисплей ST7789 320x240 с тачем), LiDAR LDROBOT LD14P +
 | ROS_DOMAIN_ID | 15 (согласован плата↔хост) | не задаётся (0 с обеих сторон — согласовано, работает) |
 
 **Неустранимые отличия** (без закрытых пакетов Yahboom / другого железа):
-порт агента 8090 vs 8888 (выравнивается: `AGENT_PORT` в bat + `#define AGENT_PORT`
-в `head_firmware/src/config.h` прошивки), имя узла (cosmetic), отсутствие `/beep`
-(можно добавить по запросу), TF laser roll=π (наше железо).
+имя узла (cosmetic, приложению не нужно), отсутствие `/beep` (не требуется),
+TF laser roll=π (наше железо). Порт агента выровнен со стоком: 8090.
 
 ## Прошивка
 
@@ -58,7 +57,7 @@ IMU QMI8658, дисплей ST7789 320x240 с тачем), LiDAR LDROBOT LD14P +
 2. Библиотеки: LDS 0.6.3, micro_ros_arduino 2.0.8-humble,
    GFX Library for Arduino 1.4.5, Adafruit GFX 1.12.6.
 3. Настройки в `head_firmware/src/config.h` (WiFi, пины, режимы фильтров,
-   `#define AGENT_PORT 8888` — для стока Yahboom поменяйте на 8090).
+   `#define AGENT_PORT 8090` — совпадает со стоком Yahboom).
 4. Первый старт: страница NETWORK → ввести SSID/PASS/AGENT → SAVE (хранится в NVS).
 5. Калибровка IMU автоматическая: при первом подключении к ROS2 плата стоит
    неподвижно, снимаются bias gyro/acc; далее автокоррекция нуля в покое.
@@ -70,7 +69,7 @@ IMU QMI8658, дисплей ST7789 320x240 с тачем), LiDAR LDROBOT LD14P +
 3. VcXsrv (X-сервер): One window, display 0, Disable access control;
    правило файрвола для vcxsrv.exe.
 4. Файрвол (для каждого используемого порта):
-   `new-netfirewallrule -displayname "wibeslam udp" -direction inbound -protocol udp -localport 8888 -action allow`
+   `new-netfirewallrule -displayname "wibeslam udp" -direction inbound -protocol udp -localport 8090 -action allow`
    и отдельно `-localport 9090 -protocol tcp` для rosbridge.
 5. `wibeslam-docker/build.bat` — сборка образа `wibeslam:latest`.
 6. `wibeslam-docker/run_wifeslam.bat` — режимы:

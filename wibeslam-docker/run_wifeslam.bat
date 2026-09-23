@@ -12,7 +12,7 @@ echo   1. WiFi/UDP agent
 echo   2. USB/Serial agent
 echo   3. Full stack (agent + Cartographer)
 echo   4. APP stack (Cartographer + rosbridge :9090 for phone app)
-set AGENT_PORT=8888
+set AGENT_PORT=8090
 set /p choice=Enter 1, 2, 3 or 4: 
 
 rem убить старый контейнер с тем же именем, если висит
