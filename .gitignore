@@ -1,23 +1,2 @@
-# Arduino / build artifacts
-.vscode/
-build/
-.build/
-*.bin
-*.elf
-*.map
-
-# Python
-__pycache__/
-*.pyc
-
-# Runtime / logs
-host/*.log
-/tmp/
-
-# OS
-Thumbs.db
-Desktop.ini
-.DS_Store
-
-# Локальные секреты (если вынесешь пароли отдельно)
-config_local.h
+# PlatformIO
+.pio/
