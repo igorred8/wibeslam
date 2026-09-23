@@ -78,8 +78,11 @@
 #define ACC_RANGE   20
 
 // ==== IMU: калибровка и фильтры (imu_filter.cpp) ====
-// 0=выкл 1=notch(f и 2f оборота) 2=Калман 3=синхронный 4=оверсемплинг
-#define IMU_FILTER_MODE  1
+// Режимы фильтра:
+// 0=OFF, 1=Notch(f+2f), 2=Kalman, 3=Sync, 4=Oversampling
+// 5=Madgwick AHRS (рекомендуется для TF/orientation), 6=Complementary
+#define IMU_FILTER_MODE  5
+
 #define IMU_TASK_HZ      500
 #define IMU_NOTCH_Q      2.0f
 #define IMU_KALMAN_Q     0.05f
@@ -89,12 +92,20 @@
 #define IMU_SYNC_BINS    12
 #define IMU_SYNC_BETA    0.05f
 #define IMU_OVER_N       25
-#define IMU_CALIBRATION_MS 2000   // сбор bias при первом подключении к ROS
-#define IMU_STILL_GYRO_MAX 5.0f   // порог "покоя" для автокоррекции, град/с
-#define IMU_STILL_ACC_TOL  0.5f   // допуск |a| от 9.81 для "покоя"
-#define IMU_ACC_EMA      0.5f     // EMA акселерометра (задержка ~2 мс)
-#define IMU_GYRO_DZ      0.25f    // мёртвая зона гироскопа, град/с
-#define SCAN_MIN_INTERVAL_MS 125  // троттлинг /scan: не чаще 8 Гц
+#define IMU_CALIBRATION_MS 2000
+#define IMU_STILL_GYRO_MAX 5.0f
+#define IMU_STILL_ACC_TOL  0.5f
+#define IMU_ACC_EMA      0.5f
+#define IMU_GYRO_DZ      0.25f
+
+// Параметры Madgwick AHRS (для режима 5)
+#define IMU_MADGWICK_BETA  0.08f    // 0.04-0.1: меньше = точнее но медленнее
+#define IMU_MADGWICK_FREQ  500.0f   // должно совпадать с IMU_TASK_HZ
+
+// Параметры комплементарного фильтра (для режима 6)
+#define IMU_COMP_ALPHA     0.96f    // 0.93-0.98: больше = больше доверия гиро
+
+#define SCAN_MIN_INTERVAL_MS 125
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

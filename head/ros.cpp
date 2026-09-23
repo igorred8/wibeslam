@@ -1,4 +1,5 @@
 #include "ros.h"
+#include "imu_filter.h"
 #include <cstring>
 #include <math.h>
 #include <time.h>
@@ -166,6 +167,39 @@ void publishIMU() {
     imu_msg.angular_velocity.x = gyroX * M_PI / 180.0f;
     imu_msg.angular_velocity.y = gyroY * M_PI / 180.0f;
     imu_msg.angular_velocity.z = gyroZ * M_PI / 180.0f;
+    
+    // Стабильная ориентация из AHRS (режимы 5/6) вместо интеграции gyro
+    float yaw = getIMUYaw();
+    float yawRad = yaw * M_PI / 180.0f;
+    
+    // Конвертация Euler -> Quaternion (ZYX порядок)
+    float cy = cosf(yawRad * 0.5f);
+    float sy = sinf(yawRad * 0.5f);
+    // Pitch и roll предполагаются близкими к 0 для SLAM (робот на плоскости)
+    float cp = 1.0f, sp = 0.0f;  // pitch = 0
+    float cr = 1.0f, sr = 0.0f;  // roll = 0
+    
+    imu_msg.orientation.w = cr*cp*cy + sr*sp*sy;
+    imu_msg.orientation.x = sr*cp*cy - cr*sp*sy;
+    imu_msg.orientation.y = cr*sp*cy + sr*cp*sy;
+    imu_msg.orientation.z = cr*cp*sy - sr*sp*cy;
+    
+    // Ковариация orientation: маленькая для AHRS, большая для raw gyro
+    if (imuFilterMode >= 5) {
+        imu_msg.orientation_covariance[0] = 0.001f;   // roll
+        imu_msg.orientation_covariance[4] = 0.001f;   // pitch
+        imu_msg.orientation_covariance[8] = 0.002f;   // yaw (стабильный)
+    } else {
+        // Для старых режимов orientation будет уплывать — ставим большую ковариацию
+        imu_msg.orientation_covariance[0] = 1.0f;
+        imu_msg.orientation_covariance[4] = 1.0f;
+        imu_msg.orientation_covariance[8] = 10.0f;
+        imu_msg.orientation.w = 1.0f;  // Сброс к дефолту
+        imu_msg.orientation.x = 0.0f;
+        imu_msg.orientation.y = 0.0f;
+        imu_msg.orientation.z = 0.0f;
+    }
+    
     getRosTime(imu_msg.header.stamp);
     (void)rcl_publish(&imu_pub, &imu_msg, NULL);
 }
