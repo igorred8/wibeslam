@@ -7,7 +7,7 @@
 #define DEF_SSID  "CHANGE_ME"
 #define DEF_PASS  "CHANGE_ME"
 #define DEF_AGENT "192.168.1.100"
-#define AGENT_PORT 8888
+#define AGENT_PORT 8090
 
 #define LIDAR_RX_PIN 18
 #define LIDAR_TX_PIN 17

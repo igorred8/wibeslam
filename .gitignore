@@ -1,2 +1,4 @@
 # PlatformIO
 .pio/
+__pycache__/
+*.pyc
