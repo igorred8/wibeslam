@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y \
     ros-humble-tf2-tools \
     ros-humble-rosbridge-server \
     ros-humble-foxglove-bridge \
-    ros-humble-laserscan-to-pointcloud2 \
     python3-yaml \
     python3-pil \
     && rm -rf /var/lib/apt/lists/*
