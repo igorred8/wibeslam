@@ -13,7 +13,7 @@ if errorlevel 1 (
 
 REM Сборка образа
 echo Сборка образа wibeslam:latest...
-docker build -t wibeslam:latest .
+docker build --no-cache -t wibeslam:latest .
 
 if errorlevel 1 (
     echo ОШИБКА: Сборка не удалась

@@ -10,6 +10,12 @@ Docker-контейнер для запуска micro-ROS агента и Cartog
 
 Первая сборка займёт 5-10 минут (скачивание ROS 2, установка пакетов, сборка micro-ROS agent).
 
+> **Важно:** все `*.sh` должны сохраняться с окончаниями строк **LF**. В репозитории
+> есть `.gitattributes`, но если у вас в git включён `core.autocrlf=true`, выполните
+> один раз: `git config --global core.autocrlf input`. Иначе при запуске появится ошибка
+> `exec /entrypoint.sh: no such file or directory` (Dockerfile дополнительно сам
+> нормализует CRLF при сборке).
+
 ### 2. Запуск
 
 Запустите `run_wifeslam.bat` двойным щелчком. Выберите режим:

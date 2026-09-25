@@ -25,6 +25,10 @@ if "%choice%"=="4" goto mode4
 echo Bad choice.
 goto end
 
+rem Проверка, что образ не устаревший: /entrypoint.sh должен быть внутри.
+docker run --rm --entrypoint ls wibeslam:latest -l /entrypoint.sh >nul 2>&1
+if errorlevel 1 goto staleimage
+
 :mode1
 docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp wibeslam:latest
 goto end
@@ -48,6 +52,23 @@ exit /b 1
 
 :noimage
 echo ERROR: image wibeslam:latest not found. Run build.bat first.
+pause
+exit /b 1
+
+:staleimage
+rem Entrypoint отсутствует внутри образа: образ собран из устаревшего кода
+rem (например, entrypoint.sh был в CRLF/не скопирован). Нужна пересборка.
+echo.
+echo ============================================================
+echo ERROR: /entrypoint.sh not found inside the image.
+echo The local image "wibeslam:latest" is STALE - it was built
+echo before entrypoint.sh was added, or from a broken checkout.
+echo.
+echo Fix:
+echo   1. docker rmi -f wibeslam:latest
+echo   2. run build.bat
+echo   3. run this script again
+echo ============================================================
 pause
 exit /b 1
 
