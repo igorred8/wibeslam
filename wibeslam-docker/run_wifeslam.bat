@@ -11,6 +11,9 @@ rem Проверка, что образ не устаревший: /entrypoint.s
 docker run --rm --entrypoint ls wibeslam:latest -l /entrypoint.sh >nul 2>&1
 if errorlevel 1 goto staleimage
 
+rem Режим app (4) требует /root/app_launch.sh внутри образа.
+rem Если его нет - пересоберите образ: docker rmi -f wibeslam:latest, затем build.bat
+
 
 echo Select mode:
 echo   1. WiFi/UDP agent
@@ -43,8 +46,23 @@ docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp -p 87
 goto end
 
 :mode4
+docker run --rm --entrypoint ls wibeslam:latest -l /root/app_launch.sh >nul 2>&1
+if errorlevel 1 goto noapplaunch
 docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp -p 9090:9090 -p 8765:8765 -e MODE=app wibeslam:latest
 goto end
+
+:noapplaunch
+echo.
+echo ============================================================
+echo ERROR: /root/app_launch.sh not found inside the image.
+echo The local image "wibeslam:latest" is STALE for APP mode.
+echo Entrypoint repair will NOT help here - rebuild is required:
+echo     docker rmi -f wibeslam:latest
+echo     build.bat
+echo (You now have git: make sure the checkout is up to date first.)
+echo ============================================================
+pause
+exit /b 1
 
 :nodocker
 echo ERROR: Docker not found or not running.
