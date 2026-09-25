@@ -89,6 +89,18 @@ TF laser roll=π (наше железо). Порт агента выровнен
 5. Для стокового поведения Yahboom (A/B-сравнение карт): добавить
    `-e CFG_LUA=palmslam_2d_stock` в docker run режима 4.
 
+### Требования к сети
+
+| Порт | Протокол | Назначение | Обязательный? |
+|------|----------|------------|---------------|
+| **9090** | TCP | rosbridge для приложения | ✅ Да |
+| **8090** | UDP | micro-ROS агент (связь с платой) | ✅ Да |
+| **8765** | TCP | Foxglove (опционально) | ⬜ Нет |
+
+**Откройте порт 9090 в брандмауэре Windows:**
+```powershell
+New-NetFirewallRule -DisplayName "ROS Robot TCP 9090" -Direction Inbound -Protocol TCP -LocalPort 9090 -Action Allow
+
 ## TF и калибровка
 
 | Параметр | Значение |
