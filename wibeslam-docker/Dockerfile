@@ -48,4 +48,8 @@ RUN sed -i 's/\r$//g' /entrypoint.sh \
     && bash -n /entrypoint.sh \
     && chmod +x /entrypoint.sh
 
+COPY host/app_topics_bridge.py /root/app_topics_bridge.py
+RUN chmod +x /root/app_topics_bridge.py
+
+
 ENTRYPOINT ["/entrypoint.sh"]

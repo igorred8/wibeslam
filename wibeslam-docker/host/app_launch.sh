@@ -63,6 +63,11 @@ echo "[5/6] rosbridge_websocket :9090 (точка входа мобильног�
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml > /tmp/rosbridge.log 2>&1 &
 PIDS+=($!)
 
+echo "[5.5/6] Starting app topics bridge (/robot_pose, /laserscan_to_pointcloud, /scan_points)..."
+python3 /root/app_topics_bridge.py > /tmp/app_bridge.log 2>&1 &
+PIDS+=($!)
+sleep 1
+
 echo "[6/6] Foxglove bridge :8765..."
 ros2 launch foxglove_bridge foxglove_bridge_launch.xml > /tmp/foxglove.log 2>&1 &
 PIDS+=($!)
