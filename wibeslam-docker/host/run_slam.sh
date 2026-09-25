@@ -16,7 +16,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "[1/7] Starting micro-ROS agent (WiFi UDP)..."
-ros2 run micro_ros_agent micro_ros_agent udp4 --port ${AGENT_PORT:-8090} -v2 > /tmp/agent.log 2>&1 &
+micro_ros_agent udp4 --port ${AGENT_PORT:-8090} -v2 > /tmp/agent.log 2>&1 &
 PIDS+=($!)
 sleep 3
 

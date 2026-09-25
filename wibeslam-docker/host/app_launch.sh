@@ -30,9 +30,9 @@ trap cleanup SIGINT SIGTERM
 echo "[1/6] micro-ROS agent ($MODE, port $AGENT_PORT)..."
 if [ "$MODE" = "serial" ]; then
     DEVICE=${DEVICE:-/dev/ttyACM0}
-    ros2 run micro_ros_agent micro_ros_agent serial --dev "$DEVICE" -v2 > /tmp/agent.log 2>&1 &
+    micro_ros_agent serial --dev "$DEVICE" -v2 > /tmp/agent.log 2>&1 &
 else
-    ros2 run micro_ros_agent micro_ros_agent udp4 --port "$AGENT_PORT" -v2 > /tmp/agent.log 2>&1 &
+    micro_ros_agent udp4 --port "$AGENT_PORT" -v2 > /tmp/agent.log 2>&1 &
 fi
 PIDS+=($!)
 sleep 3
