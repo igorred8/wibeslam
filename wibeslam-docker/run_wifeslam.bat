@@ -19,7 +19,7 @@ echo Select mode:
 echo   1. WiFi/UDP agent
 echo   2. USB/Serial agent
 echo   3. Full stack (agent + Cartographer)
-echo   4. APP stack (Cartographer + rosbridge :9090 for phone app)
+echo   4. APP stack (Cartographer + rosbridge :8090 for phone app)
 set AGENT_PORT=8090
 set /p choice=Enter 1, 2, 3 or 4: 
 
@@ -48,7 +48,7 @@ goto end
 :mode4
 docker run --rm --entrypoint ls wibeslam:latest -l /root/app_launch.sh >nul 2>&1
 if errorlevel 1 goto noapplaunch
-docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp -p 9090:9090 -p 8765:8765 -e MODE=app wibeslam:latest
+docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp -p %AGENT_PORT%:%AGENT_PORT% -p 8765:8765 -e MODE=app wibeslam:latest
 goto end
 
 :noapplaunch

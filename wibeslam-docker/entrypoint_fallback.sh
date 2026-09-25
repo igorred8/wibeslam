@@ -23,7 +23,7 @@ elif [ "$MODE" = "full" ]; then
     echo "=== Запуск полного стека (agent + Cartographer) ==="
     exec /root/run_slam.sh
 elif [ "$MODE" = "app" ]; then
-    echo "=== Запуск APP-стека (agent + Cartographer + rosbridge :9090 + foxglove) ==="
+    echo "=== Запуск APP-стека (agent + Cartographer + rosbridge :${ROSBRIDGE_PORT:-8090} + foxglove) ==="
     exec /root/app_launch.sh
 else
     echo "Неизвестный режим: $MODE"
