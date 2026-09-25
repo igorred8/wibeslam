@@ -10,9 +10,21 @@ Docker-контейнер для запуска micro-ROS агента и Cartog
 
 Первая сборка займёт 5-10 минут (скачивание ROS 2, установка пакетов, сборка micro-ROS agent).
 
+> **Важно:** все `*.sh` должны сохраняться с окончаниями строк **LF**. В репозитории
+> есть `.gitattributes`, но если у вас в git включён `core.autocrlf=true`, выполните
+> один раз: `git config --global core.autocrlf input`. Иначе при запуске появится ошибка
+> `exec /entrypoint.sh: no such file or directory` (Dockerfile дополнительно сам
+> нормализует CRLF при сборке).
+
 ### 2. Запуск
 
 Запустите `run_wifeslam.bat` двойным щелчком. Выберите режим:
+
+> **Если при запуске видите `exec /entrypoint.sh: no such file or directory`** —
+> локальный образ `wibeslam:latest` устарел/сломан. Если git недоступен в PATH,
+> выполните один раз `fix_entrypoint.bat` — он починит образ на месте (docker cp +
+> docker commit), без пересборки и без git. Либо добавьте Git в PATH
+> (`C:\Program Files\Git\cmd`) и пересоберите: `docker rmi -f wibeslam:latest` → `build.bat`.
 
 **Режим 1: WiFi/UDP**
 - ESP32 подключена к WiFi

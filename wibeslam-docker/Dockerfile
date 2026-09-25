@@ -42,6 +42,10 @@ WORKDIR /root
 
 # Скрипт запуска
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Нормализация окончаний строк (защита от CRLF при clone/редактировании на Windows:
+# shebang вида "#!/bin/bash\r" ломает exec и даёт "no such file or directory")
+RUN sed -i 's/\r$//g' /entrypoint.sh \
+    && bash -n /entrypoint.sh \
+    && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
