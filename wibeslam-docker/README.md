@@ -20,6 +20,12 @@ Docker-контейнер для запуска micro-ROS агента и Cartog
 
 Запустите `run_wifeslam.bat` двойным щелчком. Выберите режим:
 
+> **Если при запуске видите `exec /entrypoint.sh: no such file or directory`** —
+> локальный образ `wibeslam:latest` устарел/сломан. Если git недоступен в PATH,
+> выполните один раз `fix_entrypoint.bat` — он починит образ на месте (docker cp +
+> docker commit), без пересборки и без git. Либо добавьте Git в PATH
+> (`C:\Program Files\Git\cmd`) и пересоберите: `docker rmi -f wibeslam:latest` → `build.bat`.
+
 **Режим 1: WiFi/UDP**
 - ESP32 подключена к WiFi
 - Агент слушает UDP порт 8090 (как в стоке Yahboom; переопределяется AGENT_PORT)

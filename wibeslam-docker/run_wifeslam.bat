@@ -7,6 +7,11 @@ if errorlevel 1 goto nodocker
 docker image inspect wibeslam:latest >nul 2>&1
 if errorlevel 1 goto noimage
 
+rem Проверка, что образ не устаревший: /entrypoint.sh должен быть внутри.
+docker run --rm --entrypoint ls wibeslam:latest -l /entrypoint.sh >nul 2>&1
+if errorlevel 1 goto staleimage
+
+
 echo Select mode:
 echo   1. WiFi/UDP agent
 echo   2. USB/Serial agent
@@ -24,10 +29,6 @@ if "%choice%"=="3" goto mode3
 if "%choice%"=="4" goto mode4
 echo Bad choice.
 goto end
-
-rem Проверка, что образ не устаревший: /entrypoint.sh должен быть внутри.
-docker run --rm --entrypoint ls wibeslam:latest -l /entrypoint.sh >nul 2>&1
-if errorlevel 1 goto staleimage
 
 :mode1
 docker run -it --rm --name wibeslam_agent -p %AGENT_PORT%:%AGENT_PORT%/udp wibeslam:latest
