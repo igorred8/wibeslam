@@ -6,3 +6,7 @@ entrypoint.sh text eol=lf
 *.lua     text eol=lf
 *.py      text eol=lf
 *.bat     text eol=crlf
+run_wifeslam.bat text eol=crlf
+fix_entrypoint.bat text eol=crlf
+build.bat text eol=crlf
+run_rviz.bat text eol=crlf

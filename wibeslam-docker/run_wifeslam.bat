@@ -65,11 +65,16 @@ echo ERROR: /entrypoint.sh not found inside the image.
 echo The local image "wibeslam:latest" is STALE - it was built
 echo before entrypoint.sh was added, or from a broken checkout.
 echo.
-echo Fix:
-echo   1. docker rmi -f wibeslam:latest
-echo   2. run build.bat
-echo   3. run this script again
+echo Fix (choose one):
+echo   A) No git needed - from this folder run:
+echo         powershell -ExecutionPolicy Bypass -File .\fix_entrypoint.ps1
+echo      (or fix_entrypoint.bat if you have it), then run this script again.
+echo   B) Rebuild from current code (needs Dockerfile + entrypoint.sh):
+echo         docker rmi -f wibeslam:latest
+echo         build.bat
 echo ============================================================
+set /p ok=Try quick repair now? (y/n):
+if /i "%ok%"=="y" powershell -ExecutionPolicy Bypass -File "%~dp0fix_entrypoint.ps1"
 pause
 exit /b 1
 
