@@ -35,9 +35,11 @@ COPY host/run_slam.sh /root/run_slam.sh
 COPY host/app_launch.sh /root/app_launch.sh
 COPY host/save_map.sh /root/save_map.sh
 COPY host/host_time_publisher.py /root/host_time_publisher.py
+COPY host/app_topics_bridge.py /root/app_topics_bridge.py
+COPY host/palmslam_viz.rviz /root/palmslam_viz.rviz
 
 RUN chmod +x /root/run_slam.sh /root/app_launch.sh /root/save_map.sh
-
+RUN sed -i 's/\r$//g' /root/run_slam.sh /root/app_launch.sh /root/save_map.sh /root/host_time_publisher.py /root/app_topics_bridge.py
 WORKDIR /root
 
 # Скрипт запуска
@@ -48,7 +50,6 @@ RUN sed -i 's/\r$//g' /entrypoint.sh \
     && bash -n /entrypoint.sh \
     && chmod +x /entrypoint.sh
 
-COPY host/app_topics_bridge.py /root/app_topics_bridge.py
 RUN chmod +x /root/app_topics_bridge.py
 
 

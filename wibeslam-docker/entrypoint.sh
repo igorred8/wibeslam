@@ -12,13 +12,19 @@ fi
 # Режим запуска: udp (WiFi) или serial (USB)
 MODE=${MODE:-udp}
 
+# В лёгких режимах (udp/serial) сами поднимаем публикатор времени:
+# без /host_time плата не считает ROS подключённым (rosConnected = isTimeSynced)
+if [ "$MODE" = "udp" ] || [ "$MODE" = "serial" ]; then
+    nohup bash -c 'source /opt/ros/humble/setup.bash; exec python3 /root/host_time_publisher.py' >/tmp/host_time.log 2>&1 &
+fi
+
 if [ "$MODE" = "udp" ]; then
     echo "=== Запуск micro-ROS agent (UDP/WiFi) на порту ${AGENT_PORT:-8090} ==="
-    exec micro_ros_agent udp4 --port ${AGENT_PORT:-8090} -v6
+    exec ros2 run micro_ros_agent micro_ros_agent udp4 --port ${AGENT_PORT:-8090} -v6
 elif [ "$MODE" = "serial" ]; then
     DEVICE=${DEVICE:-/dev/ttyACM0}
     echo "=== Запуск micro-ROS agent (Serial/USB) на $DEVICE ==="
-    exec micro_ros_agent serial --dev $DEVICE -v6
+    exec ros2 run micro_ros_agent micro_ros_agent serial --dev $DEVICE -v6
 elif [ "$MODE" = "full" ]; then
     echo "=== Запуск полного стека (agent + Cartographer) ==="
     exec /root/run_slam.sh

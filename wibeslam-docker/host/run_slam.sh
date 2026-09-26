@@ -16,7 +16,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "[1/7] Starting micro-ROS agent (WiFi UDP)..."
-micro_ros_agent udp4 --port ${AGENT_PORT:-8090} -v2 > /tmp/agent.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent udp4 --port ${AGENT_PORT:-8090} -v6 > /tmp/agent.log 2>&1 &
 PIDS+=($!)
 sleep 3
 
@@ -40,8 +40,8 @@ sleep 1
 
 echo "[5/7] Starting Cartographer..."
 ros2 run cartographer_ros cartographer_node \
-    -configuration_directory /root/palmslam_cartographer \
-    -configuration_basename palmslam_2d.lua > /tmp/cartographer.log 2>&1 &
+    --configuration_directory /root/palmslam_cartographer \
+    --configuration_basename palmslam_2d.lua > /tmp/cartographer.log 2>&1 &
 PIDS+=($!)
 
 echo "[6/7] Starting occupancy grid..."
@@ -55,5 +55,5 @@ PIDS+=($!)
 
 echo -e "\n=== All components running ==="
 echo "Logs: tail -f /tmp/*.log"
-echo "Press Ctrl+C to stop everything\n"
+echo "Press Ctrl+C to stop everything"
 wait
