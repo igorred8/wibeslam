@@ -2,7 +2,9 @@
 // ---- Отладка IMU через Serial ----
 // Печатает CSV: t_ms,ax,ay,az,gx,gy,gz на частоте чтения IMU (~100 Hz).
 // РАБОТАЕТ ТОЛЬКО В WiFi-РЕЖИМЕ! В USB-режиме Serial занят micro-ROS.
-#define IMU_DEBUG_SERIAL 1
+#define IMU_DEBUG_SERIAL 0
+
+#define HOST_TIME_TIMEOUT_MS 5000   // /host_time молчит дольше = коннект потерян
 
 #define DEF_SSID  "CHANGE_ME"
 #define DEF_PASS  "CHANGE_ME"
@@ -51,6 +53,11 @@
 #define BTN_IMU_Y  30
 #define BTN_IMU_W  40
 #define BTN_IMU_H  18
+// Круглая кнопка возврата графиков IMU (правый нижний угол)
+#define RBTN_IMU_CX 294
+#define RBTN_IMU_CY 214
+#define RBTN_IMU_R  18
+
 
 // ---- Фильтр IMU от вибрации лидара ----
 // Окно скользящего среднего (используется враппером readQMI8658).

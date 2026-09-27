@@ -85,22 +85,26 @@ void pollTouch() {
     lastTouchPoll = millis();
     static bool touching = false;
     static int xStart = 0, yStart = 0, xLast = 0, yLast = 0;
+    static int xMax = 0, yMax = 0;
     int x, y;
-     if (touchReadXY(x, y)) {
-        if (!touching) { touching = true; xStart = x; yStart = y; }
+    if (touchReadXY(x, y)) {
+        if (!touching) { touching = true; xStart = x; yStart = y; xMax = 0; yMax = 0; }
         xLast = x; yLast = y;
+        int ex = abs(x - xStart), ey = abs(y - yStart);
+        if (ex > xMax) xMax = ex;
+        if (ey > yMax) yMax = ey;
     } else if (touching) {
         touching = false;
         int dx = xLast - xStart, dy = yLast - yStart;
-
+        bool swiped = (xMax > 30 || yMax > 30);
         if (screenPage == 2) {
-            if (kbField < 0 && netView == 0 && (abs(dx) > 40 || abs(dy) > 40))
+            if (kbField < 0 && netView == 0 && swiped)
                 screenPage = (screenPage + 1) % 3;
             else handleNetTap(xStart, yStart, dx, dy);
             return;
         }
         if (screenPage == 0) {
-            if (abs(dx) < 15 && abs(dy) < 15 &&
+            if (!swiped &&
                 xStart >= BTN_TR_X && xStart < BTN_TR_X + BTN_TR_W &&
                 yStart >= BTN_TR_Y && yStart < BTN_TR_Y + BTN_TR_H) {
                 transportMode = !transportMode;
@@ -108,22 +112,32 @@ void pollTouch() {
                 prefs.end();
                 ESP.restart();
             }
-            if (abs(dx) > 40 || abs(dy) > 40) screenPage = (screenPage + 1) % 3;
+            if (swiped) screenPage = (screenPage + 1) % 3;
             return;
         }
         bool buttonHit = false;
-        if (abs(dx) < 20 && abs(dy) < 20) {
-            if (xStart >= BTN_IMU_X && xStart < BTN_IMU_X + BTN_IMU_W &&
-                yStart >= BTN_IMU_Y && yStart < BTN_IMU_Y + BTN_IMU_H) {
-                showIMUGraphs = !showIMUGraphs; buttonHit = true;
-            } else if (xStart >= BTN_ZOOM_MINUS_X && xStart < BTN_ZOOM_MINUS_X + BTN_SIZE &&
-                       yStart >= BTN_ZOOM_MINUS_Y && yStart < BTN_ZOOM_MINUS_Y + BTN_SIZE) {
-                mapScale /= ZOOM_STEP; if (mapScale < ZOOM_MIN) mapScale = ZOOM_MIN; buttonHit = true;
-            } else if (xStart >= BTN_ZOOM_PLUS_X && xStart < BTN_ZOOM_PLUS_X + BTN_SIZE &&
-                       yStart >= BTN_ZOOM_PLUS_Y && yStart < BTN_ZOOM_PLUS_Y + BTN_SIZE) {
-                mapScale *= ZOOM_STEP; if (mapScale > ZOOM_MAX) mapScale = ZOOM_MAX; buttonHit = true;
+        if (!swiped) {
+            if (showIMUGraphs) {
+                if (xStart >= GRAPH_GYRO_X && xStart <= GRAPH_ACC_X + GRAPH_W &&
+                    yStart >= GRAPH_Y     && yStart <= GRAPH_Y + GRAPH_H) {
+                    showIMUGraphs = false; buttonHit = true;
+                }
+            } else {
+                int ddx = xStart - RBTN_IMU_CX, ddy = yStart - RBTN_IMU_CY;
+                if (ddx * ddx + ddy * ddy <= RBTN_IMU_R * RBTN_IMU_R) {
+                    showIMUGraphs = true; buttonHit = true;
+                }
+            }
+            if (!buttonHit) {
+                if (xStart >= BTN_ZOOM_MINUS_X && xStart < BTN_ZOOM_MINUS_X + BTN_SIZE &&
+                    yStart >= BTN_ZOOM_MINUS_Y && yStart < BTN_ZOOM_MINUS_Y + BTN_SIZE) {
+                    mapScale /= ZOOM_STEP; if (mapScale < ZOOM_MIN) mapScale = ZOOM_MIN; buttonHit = true;
+                } else if (xStart >= BTN_ZOOM_PLUS_X && xStart < BTN_ZOOM_PLUS_X + BTN_SIZE &&
+                    yStart >= BTN_ZOOM_PLUS_Y && yStart < BTN_ZOOM_PLUS_Y + BTN_SIZE) {
+                    mapScale *= ZOOM_STEP; if (mapScale > ZOOM_MAX) mapScale = ZOOM_MAX; buttonHit = true;
+                }
             }
         }
-        if (!buttonHit && (abs(dx) > 40 || abs(dy) > 40)) screenPage = (screenPage + 1) % 3;
+        if (!buttonHit && swiped) screenPage = (screenPage + 1) % 3;
     }
 }

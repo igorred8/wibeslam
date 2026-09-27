@@ -8,6 +8,7 @@
 
 void setup() {
     Serial.begin(115200);
+    i2cLockCreate();
     pinMode(TFT_BL, OUTPUT); digitalWrite(TFT_BL, HIGH);
     gfx->begin();
     canvas.begin();
@@ -35,14 +36,16 @@ void loop() {
         bootStage = 3;
     }
     else if (bootStage == 3) {
+        rosTaskRunning = true;
         xTaskCreatePinnedToCore(rosTask, "ros", 16384, NULL, 1, NULL, 0);
         imuFilterInit();      // задача опроса IMU 500 Гц + фильтры + калибровка
         bootStage = 4;
     }
+    
 
     wifiOK = (transportMode == 0) && (WiFi.status() == WL_CONNECTED);
     lidar.loop();
-    if (newScanReady) { publishScan(); newScanReady = false; }
+
 
     // IMU читает задача imuTask; здесь только отладочная печать глобалов
     if (millis() - lastIMURead >= 10) {
@@ -57,12 +60,22 @@ void loop() {
     }
 
     if (millis() - lastIMUGraphSample >= 33) { sampleIMUGraph(); lastIMUGraphSample = millis(); }
-    if (millis() - lastPublishIMU  >= 10)  { publishIMU(); lastPublishIMU = millis(); }
     pollTouch();
     updateDisplay();
-    rosSpin();
-    if (rosInitDone && millis() - lastPingMs >= 3000) {
+
+    
+
+    if (rosInitDone && millis() - lastPingMs >= 1000) {
+        static uint32_t connLostSince = 0;
         lastPingMs   = millis();
-        rosConnected = isTimeSynced();
+        rosConnected = rosLinkOk();
+        if (rosConnected) {
+            connLostSince = 0;
+        } else if (connLostSince == 0) {
+            connLostSince = millis();
+        } else if (millis() - connLostSince > 15000) {
+            connLostSince = 0;
+            rosNeedDeinit = true;   // fini выполнит rosSpinTask (без гонки)
+        }
     }
 }

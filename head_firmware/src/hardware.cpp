@@ -44,21 +44,28 @@ void touchInit() {
     Wire.beginTransmission(TOUCH_ADDR); Wire.write(0x00); Wire.endTransmission();
 }
 bool touchReadXY(int &x, int &y) {
+    i2cTake();
     Wire.beginTransmission(TOUCH_ADDR); Wire.write(0x01);
-    if (Wire.endTransmission(false) != 0) return false;
-    Wire.requestFrom((uint8_t)TOUCH_ADDR, (uint8_t)6);
-    if (Wire.available() < 6) return false;
-    Wire.read();
-    uint8_t n = Wire.read(), xh = Wire.read(), xl = Wire.read(), yh = Wire.read(), yl = Wire.read();
-    if (n == 0) return false;
-    int rx = ((xh & 0x0F) << 8) | xl, ry = ((yh & 0x0F) << 8) | yl;
-    int sx = ry, sy = 240 - rx;
-    x = sx < 0 ? 0 : sx > 319 ? 319 : sx;
-    y = sy < 0 ? 0 : sy > 239 ? 239 : sy;
-    touchOK = true;
-    return true;
+    bool ok = (Wire.endTransmission(false) == 0);
+    if (ok) {
+        Wire.requestFrom((uint8_t)TOUCH_ADDR, (uint8_t)6);
+        ok = (Wire.available() >= 6);
+        if (ok) {
+            Wire.read();
+            uint8_t n = Wire.read(), xh = Wire.read(), xl = Wire.read(), yh = Wire.read(), yl = Wire.read();
+            ok = (n != 0);
+            if (ok) {
+                int rx = ((xh & 0x0F) << 8) | xl, ry = ((yh & 0x0F) << 8) | yl;
+                int sx = ry, sy = 240 - rx;
+                x = sx < 0 ? 0 : sx > 319 ? 319 : sx;
+                y = sy < 0 ? 0 : sy > 239 ? 239 : sy;
+                touchOK = true;
+            }
+        }
+    }
+    i2cGive();
+    return ok;
 }
-
 // ---------- IMU ----------
 static uint8_t qmiRead(uint8_t a, uint8_t r) {
     Wire.beginTransmission(a); Wire.write(r); Wire.endTransmission(false);
@@ -91,18 +98,22 @@ static float sma(const float* buf, int len) {
 // Сырое чтение + подмена осей, БЕЗ фильтрации (для imuTask)
 bool readQMI8658Raw(float ra[3], float rg[3]) {
     if (!imuConnected) return false;
-    if (!(qmiRead(g_imuAddr, 0x2E) & 0x03)) return false;
-    Wire.beginTransmission(g_imuAddr); Wire.write(0x35); Wire.endTransmission(false);
-    Wire.requestFrom(g_imuAddr, (uint8_t)12);
-    uint8_t b[12];
-    for (int i = 0; i < 12; i++) b[i] = Wire.available() ? Wire.read() : 0;
-    int16_t ax=(b[1]<<8)|b[0], ay=(b[3]<<8)|b[2], az=(b[5]<<8)|b[4];
-    int16_t gx=(b[7]<<8)|b[6], gy=(b[9]<<8)|b[8], gz=(b[11]<<8)|b[10];
-    float rawAX = ax/4096.0f*9.81f, rawAY = ay/4096.0f*9.81f, rawAZ = az/4096.0f*9.81f;
-    float rawGX = gx/64.0f, rawGY = gy/64.0f, rawGZ = gz/64.0f;
-    ra[0] = rawAZ; ra[1] = rawAX; ra[2] = rawAY;   // вперёд / влево / вверх
-    rg[0] = rawGZ; rg[1] = rawGX; rg[2] = rawGY;   // крен / тангаж / рыскание
-    return true;
+    i2cTake();
+    bool ok = (qmiRead(g_imuAddr, 0x2E) & 0x03);
+    if (ok) {
+        Wire.beginTransmission(g_imuAddr); Wire.write(0x35); Wire.endTransmission(false);
+        Wire.requestFrom(g_imuAddr, (uint8_t)12);
+        uint8_t b[12];
+        for (int i = 0; i < 12; i++) b[i] = Wire.available() ? Wire.read() : 0;
+        int16_t ax=(b[1]<<8)|b[0], ay=(b[3]<<8)|b[2], az=(b[5]<<8)|b[4];
+        int16_t gx=(b[7]<<8)|b[6], gy=(b[9]<<8)|b[8], gz=(b[11]<<8)|b[10];
+        float rawAX = ax/4096.0f*9.81f, rawAY = ay/4096.0f*9.81f, rawAZ = az/4096.0f*9.81f;
+        float rawGX = gx/64.0f, rawGY = gy/64.0f, rawGZ = gz/64.0f;
+        ra[0] = rawAZ; ra[1] = rawAX; ra[2] = rawAY;
+        rg[0] = rawGZ; rg[1] = rawGX; rg[2] = rawGY;
+    }
+    i2cGive();
+    return ok;
 }
 
 // Враппер со скользящим средним (вызываться из loop() НЕ должен — пишет imuTask)
@@ -135,7 +146,7 @@ void calibrateIMU(uint32_t ms) {
             gx += rg[0]; gy += rg[1]; gz += rg[2];
             n++;
         }
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     if (n < 10) return;
     gyroBiasX = gx / n; gyroBiasY = gy / n; gyroBiasZ = gz / n;
@@ -152,3 +163,7 @@ void sampleIMUGraph() {
     imuBufHead = (imuBufHead + 1) % IMU_BUF_LEN;
     if (imuBufLen < IMU_BUF_LEN) imuBufLen++;
 }
+SemaphoreHandle_t g_i2cLock = NULL;
+void i2cLockCreate() { if (!g_i2cLock) g_i2cLock = xSemaphoreCreateMutex(); }
+void i2cTake() { if (g_i2cLock) xSemaphoreTake(g_i2cLock, portMAX_DELAY); }
+void i2cGive() { if (g_i2cLock) xSemaphoreGive(g_i2cLock); }

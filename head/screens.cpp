@@ -107,15 +107,16 @@ void drawPageMap() {
     wFab(BTN_ZOOM_PLUS_X  + 22, BTN_ZOOM_PLUS_Y  + 22, 22, NEON_CARD, "+");
     osdPrintf(BTN_ZOOM_PLUS_X + 8, BTN_ZOOM_PLUS_Y + 48, 1, NEON_TXT, "x%.1f", mapScale);
 
-    wPill(BTN_IMU_X, BTN_IMU_Y, BTN_IMU_W, BTN_IMU_H, showIMUGraphs ? NEON_LIME : NEON_DIM, "IMU");
-
     if (showIMUGraphs) {
         drawIMUGraph(GRAPH_GYRO_X, "GYRO",  gyroBuf, (float)GYRO_RANGE);
         drawIMUGraph(GRAPH_ACC_X,  "ACCEL", accBuf,  (float)ACC_RANGE);
+    } else {
+        // круглая кнопка возврата графиков, правый нижний угол
+        wFab(RBTN_IMU_CX, RBTN_IMU_CY, RBTN_IMU_R, NEON_LIME, "");
+        osdPrintf(RBTN_IMU_CX - 9, RBTN_IMU_CY - 4, 1, WHITE, "IMU");
     }
     osdPrintf(0, 228, 1, NEON_TXT, "2/3 swipe");
 }
-
 void drawKeyboard() {
     disp->fillScreen(NEON_BG);
     wCard(4, 2, 312, KB_FIELD_H);

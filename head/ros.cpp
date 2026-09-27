@@ -4,11 +4,12 @@
 #include <time.h>
 #include <std_msgs/msg/int64.h>
 
+
 // Временные переменные для синхронизации
 static int64_t timeOffsetMs = 0;
 static bool    timeSynced   = false;
 static int64_t lastStampMs  = 0;   // ← ДОБАВИЛ для монотонности
-
+volatile bool rosTaskRunning = false;
 // Переменные для подписки на /host_time
 static rcl_subscription_t host_time_sub;
 static std_msgs__msg__Int64 host_time_msg;
@@ -16,13 +17,20 @@ static int64_t hostTimeMs = 0;
 static bool hostTimeReceived = false;
 static rclc_executor_t executor;
 
+static uint32_t lastHostTimeMs = 0;          // когда пришло последнее /host_time
+
 static void host_time_callback(const void * msgin) {
     const std_msgs__msg__Int64 * msg = (const std_msgs__msg__Int64 *)msgin;
     hostTimeMs = msg->data;
     hostTimeReceived = true;
-    if (!timeSynced) {                       // ← фиксируем ОДИН РАЗ
-        timeOffsetMs = hostTimeMs - (int64_t)millis();
-        timeSynced = true;
+    lastHostTimeMs = millis();
+    int64_t freshOffset = hostTimeMs - (int64_t)millis();
+    if (!timeSynced) {
+        timeOffsetMs = freshOffset;          // жёсткая синхра после старта/обрыва
+        timeSynced   = true;
+    } else {
+        // периодическая мягкая коррекция (EMA 0.9/0.1) — без скачков штампов
+        timeOffsetMs = (int64_t)(0.9f * (float)timeOffsetMs + 0.1f * (float)freshOffset);
     }
 }
 
@@ -45,84 +53,11 @@ static size_t ser_write(uxrCustomTransport*, const uint8_t* b, size_t l, uint8_t
 static size_t ser_read(uxrCustomTransport*, uint8_t* b, size_t l, int timeout, uint8_t*) {
     uint32_t s = millis(); size_t n = 0;
     while (n < l && (int)(millis() - s) < timeout) {
-        if (Serial.available()) b[n++] = (uint8_t)Serial.read(); else delay(1);
+         if (Serial.available()) b[n++] = (uint8_t)Serial.read(); else vTaskDelay(1);
     }
     return n;
 }
 
-void rosTask(void*) {
-    char ssid[40], pass[64], agent[20];
-    netSsid.toCharArray(ssid, sizeof(ssid));
-    netPass.toCharArray(pass, sizeof(pass));
-    netAgent.toCharArray(agent, sizeof(agent));
-    if (transportMode == 0) set_microros_wifi_transports(ssid, pass, agent, AGENT_PORT);
-    else rmw_uros_set_custom_transport(true, NULL, ser_open, ser_close, ser_write, ser_read);
-
-    allocator = rcl_get_default_allocator();
-    rclc_support_init(&support, 0, NULL, &allocator);
-    rclc_node_init_default(&node, "palmslam_diy", "", &support);
-    
-    // Паблишеры
-    rclc_publisher_init_default(&lidar_pub, &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan), "/scan");
-    rclc_publisher_init_default(&imu_pub, &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "/imu");
-
-    // Подписчик на /host_time
-    rclc_subscription_init_default(
-        &host_time_sub,
-        &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int64),
-        "/host_time");
-    
-    // Инициализация сообщения для подписчика
-    std_msgs__msg__Int64__init(&host_time_msg);
-
-    // Инициализация LaserScan сообщения
-    static float ranges[MAX_SCAN_POINTS];
-    static float intens[MAX_SCAN_POINTS];
-    scan_msg.ranges.data = ranges;
-    scan_msg.ranges.size = MAX_SCAN_POINTS; scan_msg.ranges.capacity = MAX_SCAN_POINTS;
-    scan_msg.intensities.data = intens;
-    scan_msg.intensities.size = MAX_SCAN_POINTS; scan_msg.intensities.capacity = MAX_SCAN_POINTS;
-    scan_msg.angle_min = 0.0f;
-    scan_msg.angle_max = 2.0f * M_PI;
-    scan_msg.angle_increment = 2.0f * M_PI / MAX_SCAN_POINTS;
-    scan_msg.scan_time = 0.1f;
-    scan_msg.time_increment = 0.0001f;
-    scan_msg.range_min = 0.05f;
-    scan_msg.range_max = 12.0f;
-    static char fid_scan[] = "laser";
-    scan_msg.header.frame_id.data = fid_scan;
-    scan_msg.header.frame_id.size = strlen(fid_scan);
-    scan_msg.header.frame_id.capacity = strlen(fid_scan) + 1;
-    
-    // Инициализация IMU сообщения
-    static char fid_imu[] = "imu_link";
-    imu_msg.header.frame_id.data = fid_imu;
-    imu_msg.header.frame_id.size = strlen(fid_imu);
-    imu_msg.header.frame_id.capacity = strlen(fid_imu) + 1;
-    imu_msg.orientation.w = 1.0f;
-    for (int i = 0; i < 9; i++) {
-        imu_msg.orientation_covariance[i] = 0.0f;
-        imu_msg.angular_velocity_covariance[i] = (i % 4 == 0) ? 0.01f : 0.0f;
-        imu_msg.linear_acceleration_covariance[i] = (i % 4 == 0) ? 0.01f : 0.0f;
-    }
-    
-    // Создание executor и добавление подписчика
-    rclc_executor_init(&executor, &support.context, 1, &allocator);
-    rclc_executor_add_subscription(
-        &executor,
-        &host_time_sub,
-        &host_time_msg,
-        host_time_callback,
-        ON_NEW_DATA);
-    
-
-    
-    rosInitDone = true;
-    vTaskDelete(NULL);
-}
 
 void scanTask(void*) {
     netCount = 0;
@@ -171,11 +106,130 @@ void publishIMU() {
 }
 
 bool isTimeSynced() {
-    return timeSynced;
+    if (!timeSynced) return false;
+    if ((uint32_t)(millis() - lastHostTimeMs) > HOST_TIME_TIMEOUT_MS) {
+        timeSynced = false;                  // агент молчит — коннект потерян
+        return false;
+    }
+    return true;
+}
+
+// Вариант C: ROS-линк жив = время свежее + (в WiFi-режиме) Wi-Fi подключён
+bool rosLinkOk() {
+    if (!isTimeSynced()) return false;
+    if (transportMode == 0 && WiFi.status() != WL_CONNECTED) return false;
+    return true;
 }
 
 void rosSpin() {
     if (rosInitDone) {
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+    }
+}
+
+// Разбор мёртвой XRCE-сессии; loop пересоздаст rosTask и сессию с нуля
+void rosDeinit() {
+    if (!rosInitDone) return;
+    rosInitDone = false;
+    rclc_executor_fini(&executor);
+    rcl_subscription_fini(&host_time_sub, &node);
+    rcl_publisher_fini(&imu_pub, &node);
+    rcl_publisher_fini(&lidar_pub, &node);
+    rcl_node_fini(&node);
+    rclc_support_fini(&support);
+    timeSynced = false;
+    hostTimeReceived = false;
+}
+// Отдельная задача спина: ожидания сериала/агента больше не тормозят loop (UI, тач)
+volatile bool rosNeedDeinit = false;
+
+
+void rosTask(void*) {
+    char ssid[40], pass[64], agent[20];
+    netSsid.toCharArray(ssid, sizeof(ssid));
+    netPass.toCharArray(pass, sizeof(pass));
+    netAgent.toCharArray(agent, sizeof(agent));
+
+    bool    transportStarted = false;
+    uint8_t wifiFailCnt = 0;
+
+    for (;;) {
+        // ---------- ФАЗА INIT (с ретраями, без самоуничтожения) ----------
+        if (!rosInitDone) {
+            if (transportMode == 0) {
+                if (wifiFailCnt >= 6) transportStarted = false;
+                if (!transportStarted) {
+                    set_microros_wifi_transports(ssid, pass, agent, AGENT_PORT);
+                    transportStarted = true;
+                }
+                uint32_t t0 = millis();
+                while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000)
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                if (WiFi.status() != WL_CONNECTED) {
+                    wifiFailCnt++;
+                    vTaskDelay(pdMS_TO_TICKS(2000));
+                    continue;
+                }
+                wifiFailCnt = 0;
+            } else {
+                rmw_uros_set_custom_transport(true, NULL, ser_open, ser_close, ser_write, ser_read);
+            }
+
+            allocator = rcl_get_default_allocator();
+            if (rclc_support_init(&support, 0, NULL, &allocator) != RCL_RET_OK) {
+                vTaskDelay(pdMS_TO_TICKS(2000));   // просто пробуем снова
+                continue;
+            }
+            rclc_node_init_default(&node, "palmslam_diy", "", &support);
+            rclc_publisher_init_default(&lidar_pub, &node,
+                ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan), "/scan");
+            rclc_publisher_init_default(&imu_pub, &node,
+                ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "/imu");
+            rclc_subscription_init_default(&host_time_sub, &node,
+                ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int64), "/host_time");
+            std_msgs__msg__Int64__init(&host_time_msg);
+
+            static float ranges[MAX_SCAN_POINTS];
+            static float intens[MAX_SCAN_POINTS];
+            scan_msg.ranges.data = ranges;
+            scan_msg.ranges.size = MAX_SCAN_POINTS; scan_msg.ranges.capacity = MAX_SCAN_POINTS;
+            scan_msg.intensities.data = intens;
+            scan_msg.intensities.size = MAX_SCAN_POINTS; scan_msg.intensities.capacity = MAX_SCAN_POINTS;
+            scan_msg.angle_min = 0.0f;
+            scan_msg.angle_max = 2.0f * M_PI;
+            scan_msg.angle_increment = 2.0f * M_PI / MAX_SCAN_POINTS;
+            scan_msg.scan_time = 0.1f;
+            scan_msg.time_increment = 0.0001f;
+            scan_msg.range_min = 0.05f;
+            scan_msg.range_max = 12.0f;
+            static char fid_scan[] = "laser";
+            scan_msg.header.frame_id.data = fid_scan;
+            scan_msg.header.frame_id.size = strlen(fid_scan);
+            scan_msg.header.frame_id.capacity = strlen(fid_scan) + 1;
+
+            static char fid_imu[] = "imu_link";
+            imu_msg.header.frame_id.data = fid_imu;
+            imu_msg.header.frame_id.size = strlen(fid_imu);
+            imu_msg.header.frame_id.capacity = strlen(fid_imu) + 1;
+            imu_msg.orientation.w = 1.0f;
+            for (int i = 0; i < 9; i++) {
+                imu_msg.orientation_covariance[i] = 0.0f;
+                imu_msg.angular_velocity_covariance[i] = (i % 4 == 0) ? 0.01f : 0.0f;
+                imu_msg.linear_acceleration_covariance[i] = (i % 4 == 0) ? 0.01f : 0.0f;
+            }
+
+            rclc_executor_init(&executor, &support.context, 1, &allocator);
+            rclc_executor_add_subscription(&executor, &host_time_sub, &host_time_msg,
+                host_time_callback, ON_NEW_DATA);
+            rosInitDone = true;
+            continue;
+        }
+
+        // ---------- ФАЗА СЕРВИСА (всё rcl только здесь) ----------
+        if (rosNeedDeinit) { rosNeedDeinit = false; rosDeinit(); continue; }
+        if (newScanReady) { publishScan(); newScanReady = false; }
+        if (millis() - lastPublishIMU >= 10) { lastPublishIMU = millis(); publishIMU(); }
+        rosSpin();
+        vTaskDelay(1);
     }
 }
